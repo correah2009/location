@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Maps Playground</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/3.0.3/normalize.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <style media="screen">
+      #map {
+        height: 500px;
+      }
+      #location {
+        width: 200px;
+      }
+      .container {
+        margin-top: 50px;
+      }
+      .inputs {
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="form-inline inputs">
+              <div class="form-group">
+                <label for="location">Starting Location:</label>
+                <input type="text" id="location" value="Sacramento" class="form-control">
+              </div>
+              <div class="form-group">
+                <label for="category">Category:</label>
+                <input id="category" list="types" name="browser" value="shoe_store" class="form-control">
+                <datalist id="types">
+                  <option value="accounting">
+                  <option value="airport">
+                  <option value="amusement_park">
+                  <option value="aquarium">
+                  <option value="art_gallery">
+                  <option value="atm">
+                  <option value="bakery">
+                  <option value="bank">
+                  <option value="bar">
+                  <option value="beauty_salon">
+                  <option value="bicycle_store">
+                  <option value="book_store">
+                  <option value="bowling_alley">
+                  <option value="bus_station">
+                  <option value="cafe">
+                  <option value="campground">
+                  <option value="car_dealer">
+                  <option value="car_rental">
+                  <option value="car_repair">
+                  <option value="car_wash">
+                  <option value="casino">
+                  <option value="cemetery">
+                  <option value="church">
+                  <option value="city_hall">
+                  <option value="clothing_store">
+                  <option value="convenience_store">
+                  <option value="courthouse">
+                  <option value="dentist">
+                  <option value="department_store">
+                  <option value="doctor">
+                  <option value="electrician">
+                  <option value="electronics_store">
+                  <option value="embassy">
+                  <option value="fire_station">
+                  <option value="florist">
+                  <option value="funeral_home">
+                  <option value="furniture_store">
+                  <option value="gas_station">
+                  <option value="gym">
+                  <option value="hair_care">
+                  <option value="hardware_store">
+                  <option value="hindu_temple">
+                  <option value="home_goods_store">
+                  <option value="hospital">
+                  <option value="insurance_agency">
+                  <option value="jewelry_store">
+                  <option value="laundry">
+                  <option value="lawyer">
+                  <option value="library">
+                  <option value="liquor_store">
+                  <option value="local_government_office">
+                  <option value="locksmith">
+                  <option value="lodging">
+                  <option value="meal_delivery">
+                  <option value="meal_takeaway">
+                  <option value="mosque">
+                  <option value="movie_rental">
+                  <option value="movie_theater">
+                  <option value="moving_company">
+                  <option value="museum">
+                  <option value="night_club">
+                  <option value="painter">
+                  <option value="park">
+                  <option value="parking">
+                  <option value="pet_store">
+                  <option value="pharmacy">
+                  <option value="physiotherapist">
+                  <option value="plumber">
+                  <option value="police">
+                  <option value="post_office">
+                  <option value="real_estate_agency">
+                  <option value="restaurant">
+                  <option value="roofing_contractor">
+                  <option value="rv_park">
+                  <option value="school">
+                  <option value="shoe_store">
+                  <option value="shopping_mall">
+                  <option value="spa">
+                  <option value="stadium">
+                  <option value="storage">
+                  <option value="store">
+                  <option value="subway_station">
+                  <option value="supermarket">
+                  <option value="synagogue">
+                  <option value="taxi_stand">
+                  <option value="train_station">
+                  <option value="transit_station">
+                  <option value="travel_agency">
+                  <option value="veterinary_care">
+                  <option value="zoo">
+                </datalist>
+              </div>
+              <div class="form-group">
+                <label for="miles">Radius in Miles:</label>
+                <input type="text" id="miles" value="2" class="form-control">
+              </div>
+              <button type="button" id="find" class="btn btn-success">Go!</button>
+            </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-8">
+          <div id="map"></div>
+        </div>
+        <div class="col-md-4">
+          <ul id="locations" class="list-group w-100" style="overflow:auto; display: block; height: 500px">
+
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <script type="text/javascript">
+      var map,geocoder,service,markers,bounds,infoWindow;
+
+      document.getElementById("find").addEventListener("click", function(){
+        clearLocations();
+        var address = document.getElementById("location").value;
+        var category = document.getElementById("category").value;
+        var rad = document.getElementById("miles").value;
+
+        geoCodeAddress(address)
+        .then(function(results) {
+          return nearbySearch(results[0].geometry.location,rad,category)
+        })
+        .then(function(results) {
+          console.log("1****", results);
+          return Promise.all(
+            results.map(findDetail)
+          );
+        })
+        .then(function(results) {
+          console.log("2%%%%%", results);
+          bounds = new google.maps.LatLngBounds();
+          results.forEach(createMarker);
+          map.fitBounds(bounds);
+          return results
+        })
+        .then(function(results) {
+          console.log("3$$$$", results);
+          setupList(results)
+          results.forEach(createList);
+        })
+        .catch(function(status) {
+          alert("error: "+ status);
+        });
+
+      });
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: {lat: 34.1167014, lng: -117.9011413},
+          zoom: 8
+        });
+        geocoder = new google.maps.Geocoder();
+        service = new google.maps.places.PlacesService(map);
+        infoWindow = new google.maps.InfoWindow();
+        markers = [];
+      }
+
+      function geoCodeAddress(address) {
+        return new Promise(function(resolve,reject) {
+          geocoder.geocode( { 'address': address}, function(results, status) {
+            if (status == google.maps.GeocoderStatus.OK) {
+              resolve(results);
+            } else {
+              reject(status);
+            }
+          });
+        });
+      }
+
+      function nearbySearch(location,rad,category) {
+        var request = {
+          location: location,
+          radius: rad*1609.34,
+          type: category,
+        };
+        return new Promise(function(resolve,reject){
+          service.nearbySearch(request, function(results,status) {
+            if (status == google.maps.places.PlacesServiceStatus.OK) {
+              resolve(results);
+            }else {
+              reject(status);
+            }
+          });
+        });
+      }
+
+      function findDetail(place) {
+        return new Promise(function(resolve,reject) {
+          service.getDetails({placeId: place.place_id}, function(newPlace,status) {
+            if (status == google.maps.places.PlacesServiceStatus.OK) {
+              console.log("you got it", newPlace);
+              resolve(newPlace);
+            } else if (status === google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT) {
+              console.log("dont got it", place);
+              resolve(place);
+            } else {
+              reject(status);
+            }
+          })
+        });
+      }
+
+      function createMarker(element, index, array) {
+        const website = (element.website)? "W" : "N";
+        const animation = (element.website)? google.maps.Animation.BOUNCE : null;
+        const image = {
+          url: `http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|${(element.website)? "FE7569" : "52B552"}`,
+          size: new google.maps.Size(21, 34),
+          // The origin for this image is (0, 0).
+          origin: new google.maps.Point(0, 0),
+          // The anchor for this image is the bas
+        }
+        var html = "<b>" + element.name + "</b> <br/>" + (element.website || "");
+        var marker = new google.maps.Marker({
+          map: map,
+          position: element.geometry.location,
+          icon: image
+
+        });
+        google.maps.event.addListener(marker, 'click', function() {
+          infoWindow.setContent(html);
+          infoWindow.open(map, marker);
+        });
+        bounds.extend(element.geometry.location);
+        markers.push(marker);
+      }
+
+      function setupList(places) {
+        document.getElementById('locations').innerHTML = "";
+
+        const content = document.createElement('li');
+        content.className = "list-group-item";
+        content.innerHTML = `
+          <h5 class="mb-1">${ places.length }</h5>`;
+        document.getElementById('locations').appendChild(content);
+      }
+
+      function createList(place, index, array) {
+        // console.log(place, placeLoc,website);
+        const content = document.createElement('li');
+        content.className = "list-group-item";
+        content.innerHTML = `
+          <h5 class="mb-1">${ place.name }</h5>
+          <a style="white-space: normal;" class="list-group-item-text">${place.website || ""}</a><br/>
+          <small>${ place.types.filter(word => word !== "point_of_interest" && word !== "establishment").join(", ") }</small>`;
+        document.getElementById('locations').appendChild(content);
+      }
+
+      function clearLocations() {
+        markers.forEach(function(element, index, array) {
+          element.setMap(null);
+        });
+        markers = [];
+      }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcSXlSamiM6dQPrXpU86_ARlGGyNLkcnw&libraries=places&callback=initMap"
+    async defer></script>
+  </body>
+</html>
